@@ -3,12 +3,8 @@ package com.workilnk.task;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.workilnk.application.Application;
 import com.workilnk.user.User;
-
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -21,39 +17,51 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /* BASIC INFO */
     private String title;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    private String category;
+    @Enumerated(EnumType.STRING)
+    private TaskCategory category;
 
-    @Column(name = "budget", precision = 10, scale = 2)
-    private BigDecimal budget;
+    /* PRIORITY */
+    @Enumerated(EnumType.STRING)
+    private TaskPriority priority;   // HIGH / MEDIUM / LOW
 
-    private String location;
+    /* LOCATION */
+    private String fromLocation;     // optional
+    private String toLocation;       // mandatory
 
-    private LocalDate deadline;
+    /* BUDGET */
+    private BigDecimal minBudget;
+    private BigDecimal maxBudget;
 
+    /* DATE & TIME */
+    private LocalDate startDate;
+    private LocalDate endDate;
+
+    /* STATUS */
     @Enumerated(EnumType.STRING)
     private TaskStatus status = TaskStatus.POSTED;
 
-    // User who posted the task
+    /* USER RELATIONS */
     @ManyToOne
     @JoinColumn(name = "posted_by")
     private User postedBy;
 
-    // Worker assigned to the task
     @ManyToOne
     @JoinColumn(name = "assigned_to")
     private User assignedTo;
 
+    /* AUDIT */
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // One task → many applications
-    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL)
-    @JsonIgnore
-    private List<Application> applications;
+    // 🎤 Audio description (optional feature)
+    private String audioDescriptionUrl;
 
-    // getters & setters
+    /* CATEGORY-SPECIFIC DETAILS */
+    @OneToOne(mappedBy = "task", cascade = CascadeType.ALL)
+    private TaskDetails taskDetails;
 }

@@ -1,6 +1,11 @@
 package com.workilnk.task.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import com.workilnk.task.TaskCategory;
+import com.workilnk.task.TaskPriority;
+import com.workilnk.task.TaskStatus;
 
 import lombok.Data;
 
@@ -9,9 +14,20 @@ public class TaskListResponse {
 
     private Long id;
     private String title;
-    private String category;
-    private String location;
-    private BigDecimal budget;
-    private String status;
-    private String postedByName;
+    private String description;
+
+    private TaskCategory category;
+    private TaskPriority priority;
+
+    private String fromLocation;
+    private String toLocation;
+
+    // Budget range
+    private BigDecimal minBudget;
+    private BigDecimal maxBudget;
+
+    private LocalDate startDate;
+    private LocalDate endDate;
+
+    private TaskStatus status;
 }

@@ -14,7 +14,6 @@ import com.workilnk.exception.UnauthorizedException;
 import com.workilnk.task.Task;
 import com.workilnk.task.TaskRepository;
 import com.workilnk.task.TaskStatus;
-import com.workilnk.user.Role;
 import com.workilnk.user.User;
 import com.workilnk.user.UserRepository;
 
@@ -29,6 +28,7 @@ public class ApplicationService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
 
+    // ================= APPLY FOR TASK =================
     public Application applyForTask(
             Long taskId,
             Long workerId,
@@ -44,9 +44,16 @@ public class ApplicationService {
         User worker = userRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Worker not found"));
 
-        if (worker.getRole() != Role.WORKER) {
-            throw new UnauthorizedException("Only WORKER can apply");
+        if (task.getPostedBy().getId().equals(workerId)) {
+            throw new BadRequestException("You cannot apply for your own task");
         }
+
+        // ===== ADDED: duplicate apply protection =====
+        applicationRepository
+                .findByTaskIdAndWorkerId(taskId, workerId)
+                .ifPresent(app -> {
+                    throw new BadRequestException("You already applied for this task");
+                });
 
         Application application = new Application();
         application.setTask(task);
@@ -58,8 +65,16 @@ public class ApplicationService {
 
         return applicationRepository.save(application);
     }
-    
-    public List<ApplicationListResponse> getApplicationsByTask(Long taskId) {
+
+    // ================= GET APPLICATIONS BY TASK =================
+    public List<ApplicationListResponse> getApplicationsByTask(Long taskId, Long loggedInUserId) {
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+
+        if (!task.getPostedBy().getId().equals(loggedInUserId)) {
+            throw new UnauthorizedException("Only task owner can view applicants");
+        }
 
         return applicationRepository.findByTaskId(taskId)
                 .stream()
@@ -75,29 +90,33 @@ public class ApplicationService {
                 })
                 .collect(Collectors.toList());
     }
-    
-    
+
+    // ================= ACCEPT APPLICATION =================
     @Transactional
-    public void acceptApplication(Long applicationId) {
+    public void acceptApplication(Long taskId,
+                                  Long applicationId,
+                                  Long loggedInUserId) {
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+
+        if (!task.getPostedBy().getId().equals(loggedInUserId)) {
+            throw new BadRequestException("Only task owner can accept applications");
+        }
 
         Application selectedApp = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
 
-        Task task = selectedApp.getTask();
-
-        if (task.getStatus() != TaskStatus.POSTED) {
-            throw new BadRequestException("Task already assigned");
+        if (!selectedApp.getTask().getId().equals(taskId)) {
+            throw new BadRequestException("Application does not belong to this task");
         }
 
-        // Assign worker to task
         task.setAssignedTo(selectedApp.getWorker());
         task.setStatus(TaskStatus.ASSIGNED);
 
-        // Accept selected application
         selectedApp.setStatus(ApplicationStatus.ACCEPTED);
 
-        // Reject others
-        applicationRepository.findByTaskId(task.getId())
+        applicationRepository.findByTaskId(taskId)
                 .stream()
                 .filter(app -> !app.getId().equals(applicationId))
                 .forEach(app -> app.setStatus(ApplicationStatus.REJECTED));
@@ -105,5 +124,19 @@ public class ApplicationService {
         taskRepository.save(task);
     }
 
+    // ================= REJECT APPLICATION (NEW) =================
+    @Transactional
+    public void rejectApplication(Long applicationId, Long loggedInUserId) {
 
+        Application app = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+
+        Task task = app.getTask();
+
+        if (!task.getPostedBy().getId().equals(loggedInUserId)) {
+            throw new UnauthorizedException("Only task owner can reject applications");
+        }
+
+        app.setStatus(ApplicationStatus.REJECTED);
+    }
 }

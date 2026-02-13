@@ -54,5 +54,9 @@ public class User {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     @JsonIgnore
     private WorkerDetails workerDetails;
+    
+    private String resetOtp;
+    private LocalDateTime otpExpiry;
+
 
 }
