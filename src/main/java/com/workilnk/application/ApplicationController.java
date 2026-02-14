@@ -18,13 +18,22 @@ public class ApplicationController {
     private final ApplicationService applicationService;
 
     @PostMapping("/tasks/{taskId}/apply")
-    public Application applyForTask(
+    public String applyForTask(
             @PathVariable Long taskId,
             @RequestBody ApplyTaskRequest request) {
 
         Long workerId = SecurityUtil.getLoggedInUserId();
-        return applicationService.applyForTask(taskId, workerId, request);
+        applicationService.applyForTask(taskId, workerId, request);
+        return "Applied successfully";
     }
+    
+    @GetMapping("/tasks/{taskId}/applied")
+    public boolean hasApplied(@PathVariable Long taskId) {
+        Long userId = SecurityUtil.getLoggedInUserId();
+        return applicationService.hasApplied(taskId, userId);
+    }
+
+
 
     @GetMapping("/task/{taskId}")
     public List<ApplicationListResponse> getApplicationsByTask(

@@ -47,6 +47,20 @@ public class ApplicationService {
         if (task.getPostedBy().getId().equals(workerId)) {
             throw new BadRequestException("You cannot apply for your own task");
         }
+        
+     // ===== BID VALIDATION =====
+        if (request.getBidAmount() == null) {
+            throw new BadRequestException("Bid amount is required");
+        }
+
+        if (task.getMaxBudget() != null &&
+            request.getBidAmount().compareTo(task.getMaxBudget()) > 0) {
+
+            throw new BadRequestException(
+                "Bid amount cannot exceed task budget ₹" + task.getMaxBudget()
+            );
+        }
+
 
         // ===== ADDED: duplicate apply protection =====
         applicationRepository
@@ -65,6 +79,13 @@ public class ApplicationService {
 
         return applicationRepository.save(application);
     }
+    
+    public boolean hasApplied(Long taskId, Long workerId) {
+        return applicationRepository
+                .findByTaskIdAndWorkerId(taskId, workerId)
+                .isPresent();
+    }
+
 
     // ================= GET APPLICATIONS BY TASK =================
     public List<ApplicationListResponse> getApplicationsByTask(Long taskId, Long loggedInUserId) {
